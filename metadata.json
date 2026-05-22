@@ -1,0 +1,6 @@
+{
+  "name": "PasaHero",
+  "description": "A modern app prototype for Metro Manila, making commuting easy by helping users navigate public transport with ease.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

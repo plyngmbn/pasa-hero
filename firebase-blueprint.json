@@ -1,0 +1,90 @@
+{
+  "entities": {
+    "CommunityReport": {
+      "title": "Community Report",
+      "description": "Anonymized report from a user about transit incidents",
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["traffic", "route_change", "breakdown", "safety"],
+          "description": "The category of the incident"
+        },
+        "description": {
+          "type": "string",
+          "description": "Details about the incident"
+        },
+        "location": {
+          "type": "object",
+          "properties": {
+            "lat": { "type": "number" },
+            "lng": { "type": "number" },
+            "address": { "type": "string" }
+          },
+          "required": ["lat", "lng"]
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the report was created"
+        },
+        "reliability": {
+          "type": "number",
+          "description": "Reliability score based on user upvotes/downvotes"
+        },
+        "reporterUid": {
+          "type": "string",
+          "description": "The UID of the user who made the report"
+        }
+      },
+      "required": ["type", "description", "location", "timestamp", "reliability", "reporterUid"]
+    },
+    "ReportVote": {
+      "title": "Report Vote",
+      "description": "A vote confirming or denying a report",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "value": { "type": "number", "enum": [1, -1] }
+      },
+      "required": ["userId", "value"]
+    },
+    "UserPlace": {
+      "title": "User Place",
+      "description": "A saved location for a user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "address": { "type": "string" },
+        "icon": { "type": "string" }
+      },
+      "required": ["id", "name", "address", "icon"]
+    },
+    "UserSettings": {
+      "title": "User Settings",
+      "description": "Settings and saved places for a specific user",
+      "type": "object",
+      "properties": {
+        "savedPlaces": {
+          "type": "array",
+          "items": { "$ref": "UserPlace" }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "/reports/{reportId}": {
+      "schema": "CommunityReport",
+      "description": "Public community reports about transit"
+    },
+    "/reports/{reportId}/votes/{userId}": {
+      "schema": "ReportVote",
+      "description": "Votes on a report's reliability"
+    },
+    "/users/{userId}/settings": {
+      "schema": "UserSettings",
+      "description": "Private user settings and saved places"
+    }
+  }
+}

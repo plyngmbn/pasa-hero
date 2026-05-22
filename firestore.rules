@@ -1,0 +1,82 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // -- Helpers --
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // -- Domain Validators --
+    function isValidReport(data) {
+      return data.keys().hasAll(['type', 'description', 'location', 'timestamp', 'reliability', 'reporterUid']) &&
+             data.keys().size() == 6 &&
+             data.type in ['traffic', 'route_change', 'breakdown', 'safety'] &&
+             data.description is string && data.description.size() >= 5 && data.description.size() <= 500 &&
+             data.location is map && data.location.lat is number && data.location.lng is number &&
+             data.timestamp == request.time &&
+             data.reliability is number &&
+             data.reporterUid == request.auth.uid;
+    }
+
+    function isValidVote(data, userId) {
+      return data.keys().hasAll(['userId', 'value']) &&
+             data.keys().size() == 2 &&
+             data.userId == userId &&
+             data.value in [1, -1];
+    }
+
+    // -- Collection Rules --
+
+    match /reports/{reportId} {
+      allow get, list: if true; // Publicly readable
+      
+      allow create: if isSignedIn() && isValidId(reportId) && isValidReport(incoming());
+      
+      allow update: if isSignedIn() && (
+        // Reporter can update description or type
+        (isOwner(existing().reporterUid) && incoming().diff(existing()).affectedKeys().hasOnly(['description', 'type'])) 
+        ||
+        // Others can only vote/update reliability? 
+        // For simplicity in this demo, let's allow anyone signed in to increment/decrement reliability
+        // In a real app, this should be restricted via a subcollection + Cloud Function
+        (incoming().diff(existing()).affectedKeys().hasOnly(['reliability']) && 
+         (incoming().reliability == existing().reliability + 1 || incoming().reliability == existing().reliability - 1))
+      );
+      
+      allow delete: if isSignedIn() && isOwner(existing().reporterUid);
+
+      match /votes/{userId} {
+        allow get, list: if true;
+        allow create, update: if isOwner(userId) && isValidVote(incoming(), userId);
+        allow delete: if isOwner(userId);
+      }
+    }
+
+    match /users/{userId} {
+      match /settings {
+        allow read, write: if isOwner(userId);
+      }
+    }
+  }
+}
